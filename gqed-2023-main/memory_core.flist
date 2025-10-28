@@ -1,0 +1,8 @@
+./rtl/doublebuffer_control_unq1.sv 
+./rtl/fifo_control_unq1.sv  
+./rtl/linebuffer_control_unq1.sv 
+./rtl/memory_core.sv  
+./rtl/mem_unq1.v  
+./rtl/sram_control_unq1.sv  
+./rtl/sram_stub_unq1.v
+./gqed.sv

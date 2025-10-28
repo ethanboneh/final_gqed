@@ -1,0 +1,7 @@
+./rtl_bug/doublebuffer_control_unq1.sv 
+./rtl_bug/fifo_control_unq1.sv  
+./rtl_bug/linebuffer_control_unq1.sv 
+./rtl_bug/memory_core.sv  
+./rtl_bug/mem_unq1.v  
+./rtl_bug/sram_control_unq1.sv  
+./rtl_bug/sram_stub_unq1.v

@@ -1,0 +1,7 @@
+./rtl_clean/doublebuffer_control_unq1.sv 
+./rtl_clean/fifo_control_unq1.sv  
+./rtl_clean/linebuffer_control_unq1.sv 
+./rtl_clean/memory_core.sv  
+./rtl_clean/mem_unq1.v  
+./rtl_clean/sram_control_unq1.sv  
+./rtl_clean/sram_stub_unq1.v
