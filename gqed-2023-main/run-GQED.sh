@@ -1,4 +1,4 @@
 #!/bin/bash
 
 rm -rf jgproject
-jg -tcl jasper.tcl &
+jg -batch -allow_unsupported_OS -tcl jasper.tcl &
