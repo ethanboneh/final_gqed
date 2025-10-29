@@ -13,10 +13,10 @@ module gqed #(
 
     input [$clog2(SEQ_LEN)-1:0] i, 
     input bmc_in_valid2, // BMC chooses input to be valid or invalid in the second copy. 
-// Note that BMC should be able to exercise all possible input sequences in the second copy. 
-// Otherwise, there will be completeness issues.
+    // Note that BMC should be able to exercise all possible input sequences in the second copy. 
+    // Otherwise, there will be completeness issues.
 
-input [33:0] bmc_in_invalid2
+    input [33:0] bmc_in_invalid2
 
 );
 
@@ -30,8 +30,8 @@ input [33:0] bmc_in_invalid2
  
     ram ROM_2(.clk(clk), .addr(read_address_2), .dout(read_sample_2));
 
-    assume property (@(posedge clk) ROM_1.array[in_saved_1[15:8]] == ROM_2.array[in_saved_2[15:8]] && 
-                                    (in_saved_1[15:8]==0? 0:ROM_1.array[in_saved_1[15:8]-1]) == (in_saved_2[15:8]==0? 0:ROM_2.array[in_saved_2[15:8]-1]));
+    assume property (@(posedge clk) ROM_1.array[in_saved_1[0][10:0]] == ROM_2.array[in_saved_2[0][10:0]] && 
+                                    ROM_1.array[in_saved_1[1][10:0]] == ROM_2.array[in_saved_2[1][10:0]]);
 
     wire valid_1, read_index_1;
     wire valid_pixel_1;
@@ -72,12 +72,19 @@ input [33:0] bmc_in_invalid2
 
 reg [$clog2(SEQ_LEN)-1:0] i_cntr_1, o_cntr_1;
 reg [$clog2(SEQ_LEN)-1:0] i_cntr_2, o_cntr_2;
+reg [1:0] lat_cntr;
+
+always @(posedge clk) begin
+    if (rst) begin
+        lat_cntr <= 0;
+    end else if(lat_cntr<2) begin
+        lat_cntr <= lat_cntr + 1;
+    end
+end
 
 
-reg [10:0] x_1_prev;
-reg [10:0] x_2_prev;
-reg [15:0] in_saved_1;
-reg [15:0] in_saved_2;
+reg [15:0] in_saved_1 [0:1];
+reg [15:0] in_saved_2 [0:1];
 reg [23:0] out_saved_1;
 reg [23:0] out_saved_2;
 reg done_1, done_2;
@@ -86,24 +93,20 @@ always @(posedge clk) begin
     if(rst) begin
         i_cntr_1 <= 0;
         i_cntr_2 <= 0;
-        x_1_prev <= 0;
-        x_2_prev <= 0;
-        in_saved_1 <= 0;
-        in_saved_2 <= 0;
+        in_saved_1 <= '{default:0};
+        in_saved_2 <= '{default:0};
     end else begin
-        if (((y_1 >= ROM_1.array[x_1] && y_1 <= ROM_1.array[x_1_prev]) || (y_1 <= ROM_1.array[x_1] && y_1 >= ROM_1.array[x_1_prev])) && valid_1) begin
-            i_cntr_1 <= i_cntr_1 + 1; 
-            x_1_prev <= x_1;
-            if(i_cntr_1 == i) 
-                in_saved_1 <= {x_1, y_1};
-        end
-        if (((y_2 >= ROM_2.array[x_2] && y_2 <= ROM_2.array[x_2_prev]) || (y_2 <= ROM_2.array[x_2] && y_2 >= ROM_2.array[x_2_prev])) && valid_2) begin
-            i_cntr_2 <= i_cntr_2 + 1;
-            x_2_prev <= x_2;
-            in_saved_2 <= {x_2, y_2};
+        i_cntr_1 <= i_cntr_1 + 1; 
+        if(i_cntr_1 == i) 
+            in_saved_1[0] <= {y_1, x_1};
+        if(i_cntr_1 == i+1) 
+            in_saved_1[1] <= {y_1, x_1}; 
+        if(i_cntr_1 == 0)
+            in_saved_2[0] <= {y_2, x_2};
+        if(i_cntr_1 == 1)        
+            in_saved_2[1] <= {y_2, x_2}; 
         end
     end     
-end
 
 
 
@@ -115,20 +118,25 @@ always @(posedge clk) begin
         out_saved_2 <= 0;
         done_1 <= 0;
         done_2 <= 0;
-    end else if (valid_pixel_1 == 1'b1) begin
-        o_cntr_1 <= o_cntr_1 + 1;
-        done_1 <= 1;
-        if(o_cntr_1 == i) 
-            out_saved_1 <= {wd_r_1, wd_g_1, wd_b_1};
-    end else if (valid_pixel_2 == 1'b1) begin
-        done_2 <= 1;    
-        o_cntr_2 <= o_cntr_2 + 1;
-        out_saved_2 <= {wd_r_2, wd_g_2, wd_b_2};
+    end else 
+        if (lat_cntr == 2) begin
+            o_cntr_1 <= o_cntr_1 + 1;
+            if(o_cntr_1 == i) begin 
+                out_saved_1 <= {wd_r_1, wd_g_1, wd_b_1};
+                done_1 <= 1;
+            end
+        end 
+        if (lat_cntr == 2) begin
+            o_cntr_2 <= o_cntr_2 + 1;
+            if(o_cntr_2 == 0) begin 
+                out_saved_2 <= {wd_r_2, wd_g_2, wd_b_2};
+                done_2 <= 1;
+            end
+        end 
     end
-end
 
-assume property (@(posedge clk) valid_1 |-> x_1 == $past(x_1_prev) + 1); 
-assume property (@(posedge clk) valid_2 |-> x_2 == $past(x_2_prev) + 1);
+assume property (@(posedge clk) $stable(i)); 
+
 assume property (@(posedge clk) ((read_index_1 == read_index_2) && $stable(read_index_1) && $stable(read_index_2)));
 
 FC: assert property (@(posedge clk) done_1 && done_2 && in_saved_1 == in_saved_2 |-> out_saved_1 == out_saved_2);
